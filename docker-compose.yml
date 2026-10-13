@@ -1,0 +1,39 @@
+# Локальный запуск: Podman (docker CLI через podman machine) + PostgreSQL.
+# Порт БД опубликован на 5433 — 5432 на хосте может занимать локальный PostgreSQL.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: geocoding_db
+      POSTGRES_USER: geo
+      POSTGRES_PASSWORD: geo
+    ports:
+      - "5433:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U geo -d geocoding_db"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  app:
+    build: .
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      DB_HOST: db
+      DB_PORT: "5432"
+      DB_NAME: geocoding_db
+      DB_USER: geo
+      DB_PASSWORD: geo
+      GEOCODING_PROVIDER: ${GEOCODING_PROVIDER:-nominatim}
+      # для Nominatim укажите контактный e-mail по usage policy
+      GEOCODING_USER_AGENT: ${GEOCODING_USER_AGENT:-geocoding-proxy-service/0.0.1}
+      LOG_LEVEL: ${LOG_LEVEL:-INFO}
+    ports:
+      - "${APP_PORT:-8080}:8080"
+
+volumes:
+  pgdata:

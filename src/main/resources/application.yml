@@ -1,0 +1,55 @@
+spring:
+  application:
+    name: geocoding-proxy-service
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://${DB_HOST:localhost}:${DB_PORT:5432}/${DB_NAME:geocoding_db}}
+    username: ${DB_USER:geo}
+    password: ${DB_PASSWORD:geo}
+  jpa:
+    hibernate:
+      ddl-auto: validate
+    show-sql: false
+  flyway:
+    enabled: true
+
+server:
+  port: ${PORT:8080}
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics
+  endpoint:
+    health:
+      show-details: never
+
+logging:
+  level:
+    com.waliot.geo: ${LOG_LEVEL:INFO}
+  pattern:
+    # requestId из MDC (RequestLoggingFilter) — трассировка по всем логам запроса
+    level: "%5p [req:%X{requestId:-}]"
+
+geocoding:
+  # активный провайдер: nominatim | photon
+  provider: ${GEOCODING_PROVIDER:nominatim}
+  # User-Agent обязателен для Nominatim (usage policy)
+  user-agent: ${GEOCODING_USER_AGENT:geocoding-proxy-service/0.0.1}
+  connect-timeout: 5s
+  read-timeout: 10s
+  # максимальное число одновременных вызовов к внешнему API
+  max-concurrent-requests: ${GEOCODING_MAX_CONCURRENT:4}
+  # верхний предел ожидания результата параллельного (single-flight) запроса;
+  # худшее время провайдера ≈ попытки × (connect + read) + backoff ≈ 48 с, берём с запасом
+  single-flight-timeout: ${SINGLE_FLIGHT_TIMEOUT:PT60S}
+  cache:
+    # TTL записи кэша (ISO-8601)
+    ttl: ${CACHE_TTL:PT168H}
+    # период очистки устаревших записей
+    cleanup-interval: ${CACHE_CLEANUP_INTERVAL:PT1H}
+  providers:
+    nominatim:
+      base-url: ${NOMINATIM_URL:https://nominatim.openstreetmap.org}
+    photon:
+      base-url: ${PHOTON_URL:https://photon.komoot.io}
